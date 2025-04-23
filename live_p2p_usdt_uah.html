@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Live USDT/UAH Rates</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .rate {
+      font-size: 1.2em;
+      margin: 10px 0;
+    }
+    .highlight {
+      font-weight: bold;
+      color: #2a9d8f;
+    }
+    .positive {
+      color: green;
+    }
+    .negative {
+      color: red;
+    }
+    canvas {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Live USDT/UAH Rates (Monobank)</h1>
+  <div class="rate">Merchant Rate: <span id="merchantRate" class="highlight">-</span></div>
+  <div class="rate">Non-Merchant Rate: <span id="nonMerchantRate" class="highlight">-</span></div>
+  <div class="rate">Difference: <span id="rateDiff" class="highlight">-</span></div>
+
+  <canvas id="rateChart" width="800" height="400"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const API_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
+
+    const merchantEl = document.getElementById("merchantRate");
+    const nonMerchantEl = document.getElementById("nonMerchantRate");
+    const diffEl = document.getElementById("rateDiff");
+
+    const threshold = 0.1; // UAH difference
+
+    const labels = [];
+    const merchantData = [];
+    const nonMerchantData = [];
+
+    const ctx = document.getElementById('rateChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Merchant Rate',
+            borderColor: '#2a9d8f',
+            data: merchantData,
+            fill: false
+          },
+          {
+            label: 'Non-Merchant Rate',
+            borderColor: '#e76f51',
+            data: nonMerchantData,
+            fill: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Time'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'UAH'
+            }
+          }
+        }
+      }
+    });
+
+    async function fetchRate(merchantCheck) {
+      const body = {
+        asset: "USDT",
+        fiat: "UAH",
+        merchantCheck: merchantCheck,
+        page: 1,
+        payTypes: ["Monobank"],
+        publisherType: merchantCheck ? "merchant" : null,
+        rows: 1,
+        tradeType: "SELL"
+      };
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const data = await response.json();
+      return parseFloat(data.data[0]?.adv?.price || 0);
+    }
+
+    async function updateRates() {
+      try {
+        const [merchant, nonMerchant] = await Promise.all([
+          fetchRate(true),
+          fetchRate(false)
+        ]);
+
+        const diff = (merchant - nonMerchant).toFixed(2);
+        const now = new Date().toLocaleTimeString();
+
+        merchantEl.textContent = merchant;
+        nonMerchantEl.textContent = nonMerchant;
+        diffEl.textContent = diff;
+
+        diffEl.className = "highlight " + (diff > threshold ? "positive" : "negative");
+
+        labels.push(now);
+        merchantData.push(merchant);
+        nonMerchantData.push(nonMerchant);
+
+        if (labels.length > 20) {
+          labels.shift();
+          merchantData.shift();
+          nonMerchantData.shift();
+        }
+
+        chart.update();
+      } catch (err) {
+        console.error("Rate fetch error:", err);
+      }
+    }
+
+    updateRates();
+    setInterval(updateRates, 10000);
+  </script>
+</body>
+</html>
