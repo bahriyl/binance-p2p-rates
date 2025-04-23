@@ -45,13 +45,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    const API_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
+    const CORS_PROXY = "https://corsproxy.io/?";
+    const BINANCE_URL = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
+    const API_URL = CORS_PROXY + encodeURIComponent(BINANCE_URL);
 
     const merchantEl = document.getElementById("merchantRate");
     const nonMerchantEl = document.getElementById("nonMerchantRate");
     const diffEl = document.getElementById("rateDiff");
 
-    const threshold = 0.1; // UAH difference
+    const threshold = 0.1;
 
     const labels = [];
     const merchantData = [];
@@ -81,16 +83,10 @@
         responsive: true,
         scales: {
           x: {
-            title: {
-              display: true,
-              text: 'Time'
-            }
+            title: { display: true, text: 'Time' }
           },
           y: {
-            title: {
-              display: true,
-              text: 'UAH'
-            }
+            title: { display: true, text: 'UAH' }
           }
         }
       }
